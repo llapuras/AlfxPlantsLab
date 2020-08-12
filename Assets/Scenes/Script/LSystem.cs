@@ -5,31 +5,36 @@ using System.Text;
 
 public class LSystem : MonoBehaviour
 {
-    [Header("awsl")]
-    public bool debug = true;
+    [Header("Input Setting")]
     public Dictionary<char, string> rules = new Dictionary<char, string>();
     [Range(0, 6)]
     public int iterations = 4; //大于x的话Unity会炸，在我的电脑上x=8(仅供参考
     public string input = "F";
     public string rule = "F+F+F+F";
     public float angle = 45;
-    private string output;
+    [Range(0.9f, 1.1f)]
+    public float scalingfactor = 1;
+    public float height = 1;
 
     [Header("Random Setting")]
     public bool isRandom = false;
     public Vector2 randomRange = new Vector2(-45,45);
 
+    [Header("Result")]
     public string result;
 
-    List<point> points = new List<point>();
-    List<GameObject> branches = new List<GameObject>();
-
+    [Header("Plant Units")]
     public GameObject cylinder;
-
     public GameObject stem;
     public GameObject petal;
     public GameObject leaf;
 
+    [Header("Debug")]
+    public bool debug = true;
+
+    List<point> points = new List<point>();
+    List<GameObject> branches = new List<GameObject>();
+    private string output;
 
     void Start()
     {
@@ -89,7 +94,7 @@ public class LSystem : MonoBehaviour
     void determinePoints(string p_input)
     {
         Stack<point> returnValues = new Stack<point>();
-        point lastPoint = new point(Vector3.zero, Vector3.zero, 1f);
+        point lastPoint = new point(transform.position, transform.position, 1f);//初始位置和父物体关联
         returnValues.Push(lastPoint);
 
         foreach (char c in p_input)
@@ -100,7 +105,7 @@ public class LSystem : MonoBehaviour
                     points.Add(lastPoint);
 
                     point newPoint = new point(lastPoint.Point + new Vector3(0, lastPoint.BranchLength, 0), lastPoint.Angle, 1f);
-                    newPoint.BranchLength = lastPoint.BranchLength - 0.02f;
+                    newPoint.BranchLength = lastPoint.BranchLength*scalingfactor;
                     if (newPoint.BranchLength <= 0.0f) newPoint.BranchLength = 0.001f;
 
                     newPoint.Angle.y = lastPoint.Angle.y;
@@ -129,6 +134,19 @@ public class LSystem : MonoBehaviour
                 case ']': // Load Saved State
                     lastPoint = returnValues.Pop();
                     break;
+                case '*': // Load Saved State
+                    lastPoint.Angle.z += angle;
+                    break;
+                case '&': // Load Saved State
+                    lastPoint.Angle.z -= angle;
+                    break;
+                case '/': // Load Saved State
+                    lastPoint.Angle.y += angle;
+                    break;
+                case '?': // Load Saved State
+                    lastPoint.Angle.y -= angle;
+                    break;
+
             }
         }
     }
@@ -137,7 +155,7 @@ public class LSystem : MonoBehaviour
     {
         for (int i = 0; i < points.Count; i += 2)
         {
-            CreateCylinder(points[i], points[i + 1], 0.1f);
+            CreateCylinder(points[i], points[i + 1], 1f);
         }
     }
 
@@ -156,7 +174,7 @@ public class LSystem : MonoBehaviour
         float length = Vector3.Distance(point2.Point, point1.Point);
         radius = radius * length;
 
-        Vector3 scale = new Vector3(radius, length / 2.0f, radius);
+        Vector3 scale = new Vector3(radius, length, radius);
         newCylinder.transform.localScale = scale;
 
         newCylinder.transform.position = point1.Point;
