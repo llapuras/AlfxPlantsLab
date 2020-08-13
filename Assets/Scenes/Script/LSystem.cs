@@ -16,7 +16,7 @@ public class LSystem : MonoBehaviour
 
     [Header("Input Setting")]
     [Range(0, 6)]
-    public int iterations = 4; //大于x的话Unity会炸，在我的电脑上x=8(仅供参考
+    public int iterations = 4; //数太大Unity会炸
     public string input = "F";
     public string rule = "F+F+F+F";
     public float angle = 45;
