@@ -9,16 +9,16 @@ public class LSystem : MonoBehaviour
     public Dictionary<char, string> rules = new Dictionary<char, string>();
 
     [Header("Plant Units")]
-    public GameObject cylinder;
-    //public GameObject stem;
-    //public GameObject petal;
-    //public GameObject leaf;
+    public GameObject stem;
+    public GameObject petal;
+    public GameObject leaf;
 
     [Header("Input Setting")]
     [Range(0, 6)]
     public int iterations = 4; //数太大Unity会炸
     public string input = "F";
     public string rule = "F+F+F+F";
+
     public float angle = 45;
     [Range(0.9f, 1.1f)]
     public float scalingFactor = 1;
@@ -64,7 +64,7 @@ public class LSystem : MonoBehaviour
         branches.Clear();
 
         // 自定义生成Rules，具体规则和示例可以参照用户指南→http://paulbourke.net/fractals/lsys/
-        rules.Add('F', rule);
+        rules.Add('S', rule);
 
         // Apply rules for i interations
         output = input;
@@ -74,7 +74,7 @@ public class LSystem : MonoBehaviour
         }
         result = output;
         determinePoints(output);
-        CreateCylinders();
+        CreateGos();
     }
 
     string applyRules(string p_input)
@@ -97,26 +97,27 @@ public class LSystem : MonoBehaviour
     
     struct point
     {
-        public point(Vector3 rP, Vector3 rA, float rL) { Pos = rP; Angle = rA; BranchLength = rL; }
+        public point(Vector3 rP, Vector3 rA, float rL, GameObject g) { Pos = rP; Angle = rA; BranchLength = rL; go = g; }
         public Vector3 Pos;
         public Vector3 Angle;
-        public float BranchLength;//petal的间隔高度
+        public float BranchLength;
+        public GameObject go;//prefab for current point
     }
 
     void determinePoints(string p_input)
     {
         Stack<point> returnValues = new Stack<point>();
-        point lastPoint = new point(new Vector3(transform.position.x, transform.position.y + stepHeight, transform.position.z), transform.eulerAngles, inputHeight);//初始位置和父物体关联
+        point lastPoint = new point(new Vector3(transform.position.x, transform.position.y + stepHeight, transform.position.z), transform.eulerAngles, inputHeight, stem);//初始位置和父物体关联
         returnValues.Push(lastPoint);
 
         foreach (char c in p_input)
         {
             switch (c)
             {
-                case 'F': 
+                case 'S': //Stem
                     points.Add(lastPoint);
 
-                    point newPoint = new point(lastPoint.Pos + new Vector3(0, lastPoint.BranchLength, 0), lastPoint.Angle, inputHeight);
+                    point newPoint = new point(lastPoint.Pos + new Vector3(0, lastPoint.BranchLength, 0), lastPoint.Angle, inputHeight, stem);
                     newPoint.BranchLength = lastPoint.BranchLength * scalingFactor;
                     if (newPoint.BranchLength <= 0.0f) newPoint.BranchLength = 0.001f;
 
@@ -136,6 +137,57 @@ public class LSystem : MonoBehaviour
                     points.Add(newPoint);
                     lastPoint = newPoint;
                     break;
+
+
+                case 'P': //Petal
+                    points.Add(lastPoint);
+
+                    newPoint = new point(lastPoint.Pos + new Vector3(0, lastPoint.BranchLength, 0), lastPoint.Angle, inputHeight, petal);
+                    newPoint.BranchLength = lastPoint.BranchLength * scalingFactor;
+                    if (newPoint.BranchLength <= 0.0f) newPoint.BranchLength = 0.001f;
+
+                    newPoint.Angle.y = lastPoint.Angle.y;
+
+                    //add random
+                    if (isRandom == true)
+                    {
+                        newPoint.Angle.y += UnityEngine.Random.Range(randomRange.x, randomRange.y);
+                    }
+
+                    newPoint.Pos = pivot(newPoint.Pos, lastPoint.Pos, new Vector3(newPoint.Angle.x, 0, 0));
+                    newPoint.Pos = pivot(newPoint.Pos, lastPoint.Pos, new Vector3(0, newPoint.Angle.y, 0));
+                    //newPoint.Point = pivot(newPoint.Point, lastPoint.Point, Vector3.zero);
+                    //newPoint.Point = pivot(newPoint.Point, lastPoint.Point, Vector3.zero);
+
+                    points.Add(newPoint);
+                    lastPoint = newPoint;
+                    break;
+
+                case 'L': //Leaf
+                    points.Add(lastPoint);
+
+                    newPoint = new point(lastPoint.Pos + new Vector3(0, lastPoint.BranchLength, 0), lastPoint.Angle, inputHeight, leaf);
+                    newPoint.BranchLength = lastPoint.BranchLength * scalingFactor;
+                    if (newPoint.BranchLength <= 0.0f) newPoint.BranchLength = 0.001f;
+
+                    newPoint.Angle.y = lastPoint.Angle.y;
+
+                    //add random
+                    if (isRandom == true)
+                    {
+                        newPoint.Angle.y += UnityEngine.Random.Range(randomRange.x, randomRange.y);
+                    }
+
+                    newPoint.Pos = pivot(newPoint.Pos, lastPoint.Pos, new Vector3(newPoint.Angle.x, 0, 0));
+                    newPoint.Pos = pivot(newPoint.Pos, lastPoint.Pos, new Vector3(0, newPoint.Angle.y, 0));
+                    //newPoint.Point = pivot(newPoint.Point, lastPoint.Point, Vector3.zero);
+                    //newPoint.Point = pivot(newPoint.Point, lastPoint.Point, Vector3.zero);
+
+                    points.Add(newPoint);
+                    lastPoint = newPoint;
+                    break;
+
+
                 case '+': // Rotate +30
                     lastPoint.Angle.x += angle;
                     break;
@@ -165,11 +217,11 @@ public class LSystem : MonoBehaviour
         }
     }
 
-    void CreateCylinders()
+    void CreateGos()
     {
         for (int i = 0; i < points.Count; i += 2)
         {
-            CreateCylinder(points[i], points[i + 1], 1f, cylinder);
+            CreateGo(points[i], points[i + 1], 1f);
         }
     }
 
@@ -182,9 +234,9 @@ public class LSystem : MonoBehaviour
         return point1;
     }
 
-    void CreateCylinder(point point1, point point2, float radius, GameObject go)
+    void CreateGo(point point1, point point2, float radius)
     {
-        GameObject newGo = (GameObject)Instantiate(go);
+        GameObject newGo = (GameObject)Instantiate(point2.go);
         newGo.SetActive(true);
         float length = Vector3.Distance(point2.Pos, point1.Pos);
         //radius = radius * length;
